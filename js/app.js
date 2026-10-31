@@ -315,7 +315,9 @@ function Admin() {
   return h('div', null,
     h('div', { class: 'page-head admin-head' },
       h('button', { class: 'round-btn', 'aria-label': 'Orqaga', html: I.back, onclick: () => { S.view = 'settings'; renderView(); window.scrollTo(0, 0); } }),
-      h('div', null, h('h1', null, 'Admin panel'), h('p', null, 'Kim ilovadan foydalana oladi'))),
+      h('div', null, h('h1', null, 'Admin panel'), h('p', null, 'Kim ilovadan foydalana oladi')),
+      window.top === window ? h('button', { class: 'btn ghost pp-open', onclick: phonePreview },
+        h('span', { html: I.phone, style: { display: 'contents' } }), 'Telefonda ko‘rish') : null),
     h('div', { class: 'content', style: { paddingTop: '8px' } },
       h('div', { class: 'kpis' },
         h('div', { class: 'kpi' }, h('b', { style: { color: groups.pending.length ? 'var(--saffron)' : null } }, String(groups.pending.length)), h('span', null, 'yangi zayavka')),
@@ -333,6 +335,37 @@ function Admin() {
           h('button', { class: 'round-btn', 'aria-label': 'Ro‘yxatdan olib tashlash', html: I.trash, onclick: async () => {
             if (await confirmSheet({ title: 'Ro‘yxatdan olib tashlansinmi?', text: `${a.email} uchun avtomatik ruxsat bekor qilinadi. Allaqachon kirgan bo‘lsa, ruxsati saqlanadi.`, ok: 'Olib tashlash', danger: true })) store.removeAllow(a.id).catch(e => toast(e.message));
           } })))) : null)));
+}
+
+// ═════════════ Telefon ko‘rinishi (faqat admin) ═════════════
+function phonePreview() {
+  if (!store.isAdmin || document.querySelector('.pp-overlay')) return;
+  const SIZES = { samsung: [360, 780, 'Samsung'], iphone: [390, 844, 'iPhone'] };
+  let cur = 'samsung';
+  const iframe = h('iframe', { src: location.pathname + '?preview=1', title: 'Telefon ko‘rinishi' });
+  const phone = h('div', { class: 'pp-phone' }, h('i', { class: 'pp-notch' }), iframe);
+  const box = h('div', { class: 'pp-box' }, phone);
+  const seg = h('div', { class: 'seg' });
+  const fit = () => {
+    const [w, hgt] = SIZES[cur];
+    iframe.style.width = w + 'px'; iframe.style.height = hgt + 'px';
+    const fw = w + 24, fh = hgt + 24;
+    const k = Math.min(1, (innerHeight - 120) / fh, (innerWidth - 40) / fw);
+    phone.style.transform = `scale(${k})`;
+    box.style.width = fw * k + 'px'; box.style.height = fh * k + 'px';
+    seg.replaceChildren(...Object.entries(SIZES).map(([id, [, , l]]) => h('button', { class: cur === id ? 'on' : '', onclick: () => { cur = id; fit(); } }, l)));
+  };
+  const close = () => { ov.remove(); removeEventListener('resize', fit); removeEventListener('keydown', esc); };
+  const esc = e => { if (e.key === 'Escape') close(); };
+  const ov = h('div', { class: 'pp-overlay', role: 'dialog', 'aria-label': 'Telefon ko‘rinishi' },
+    h('div', { class: 'pp-bar' }, seg,
+      h('button', { class: 'round-btn', 'aria-label': 'Yangilash', title: 'Yangilash', html: I.refresh, onclick: () => { iframe.src = iframe.src; } }),
+      h('button', { class: 'round-btn', 'aria-label': 'Yopish', title: 'Yopish', html: I.x, onclick: close })),
+    box,
+    h('p', { class: 'pp-hint' }, 'Bu sizning hisobingiz telefonda qanday ko‘rinishi. Bu yerdagi o‘zgarishlar haqiqiy ma’lumotlarga yoziladi.'));
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  addEventListener('resize', fit); addEventListener('keydown', esc);
+  document.body.append(ov); fit();
 }
 
 // ═════════════ Onboarding ═════════════
