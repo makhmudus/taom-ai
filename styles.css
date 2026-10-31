@@ -563,3 +563,40 @@ textarea.input { resize: none; min-height: 96px; line-height: 1.4; }
 .cred-row:last-child { border-bottom: 0; }
 .cred-row span { color: var(--muted); font-weight: 600; }
 .cred-row b { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 16.5px; letter-spacing: .02em; word-break: break-all; text-align: right; }
+
+/* ── Admin: foydalanuvchini topish ── */
+.search { position: relative; }
+.search .input { padding-left: 48px; }
+.search-ic { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; color: var(--muted); }
+.search-ic svg { width: 100%; height: 100%; display: block; }
+.muted-note { color: var(--muted); font-size: 14.5px; margin: 12px 4px 0; }
+.row-sel { background: var(--surface-2); }
+.row .ri { font-weight: 800; }
+.chip-status { font-size: 12px; font-weight: 700; padding: 4px 9px; border-radius: 10px; background: var(--surface-2); color: var(--muted); flex: none; }
+.chip-status.st-approved { color: var(--turq); background: color-mix(in srgb, var(--turq) 14%, transparent); }
+.chip-status.st-pending { color: var(--saffron); background: color-mix(in srgb, var(--saffron) 16%, transparent); }
+.chip-status.st-rejected, .chip-status.st-blocked { color: var(--pom); background: color-mix(in srgb, var(--pom) 12%, transparent); }
+.ud { margin-top: 12px; }
+.kv-list { margin-top: 12px; border-top: 1px solid var(--line); }
+.kv { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 2px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.kv-k { color: var(--muted); font-weight: 600; flex: none; }
+.kv-v { text-align: right; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.kv-v.muted { color: var(--faint); font-weight: 500; font-size: 14px; }
+.kv-v.mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .03em; }
+.kv-pw { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
+.kv-pw .link { font-size: 14px; padding: 4px 6px; }
+.ud-day { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 10px; }
+.ud-day b { font-size: 17px; }
+.ud-day .round-btn:disabled { opacity: .35; }
+.ud-sum { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: var(--surface-2); }
+.ud-sum b { font-family: var(--num); font-size: 26px; font-weight: 600; letter-spacing: -.03em; margin-right: 6px; }
+.ud-sum span { color: var(--muted); font-weight: 600; }
+.ud-meals { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ud-meal { display: flex; gap: 12px; align-items: center; padding: 8px; border-radius: 16px; border: 1px solid var(--line); }
+.ud-meal .thumb { width: 56px; height: 56px; border-radius: 12px; background: var(--surface-2); flex: none; overflow: hidden; display: grid; place-items: center; font-size: 26px; }
+.ud-meal .thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ud-meal .mbody { flex: 1; min-width: 0; }
+.ud-meal .mtop { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ud-meal .mtop b { font-size: 15.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ud-meal .mtime { font-size: 12.5px; color: var(--faint); background: var(--surface-2); padding: 2px 8px; border-radius: 10px; flex: none; }
+.ud-sub { display: block; color: var(--muted); font-size: 13px; margin-top: 3px; }

@@ -323,10 +323,30 @@ export const store = {
         uid, email, name: String(name || '').slice(0, 60), photo: '', note: 'Admin qo‘shgan',
         status: 'approved', requestedAt: now, decidedAt: now, managed: true, login: showLogin(email),
       });
+      // Admin keyin qayta ko‘rishi uchun (faqat admin o‘qiy oladi)
+      try { await F.setDoc(F.doc(db, 'creds', uid), { login: showLogin(email), password, createdAt: now }); } catch (e) { console.warn('creds', e); }
       return { uid, login: showLogin(email) };
     } finally {
       try { await appM.deleteApp(tmp); } catch (e) {}
     }
+  },
+  // admin: foydalanuvchi ma’lumotlarini ko‘rish
+  async adminLoadUser(uid, date) {
+    const { F, db } = this.fb;
+    const safe = p => p.catch(e => { console.warn(e); return null; });
+    const [prof, meals, day, cred] = await Promise.all([
+      safe(F.getDoc(F.doc(db, 'users', uid))),
+      safe(F.getDocs(F.query(F.collection(db, 'users', uid, 'meals'), F.where('date', '==', date)))),
+      safe(F.getDoc(F.doc(db, 'users', uid, 'days', date))),
+      safe(F.getDoc(F.doc(db, 'creds', uid))),
+    ]);
+    return {
+      profile: prof && prof.exists() ? prof.data() : null,
+      meals: meals ? meals.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.ts - b.ts) : [],
+      water: day && day.exists() ? (day.data().water || 0) : 0,
+      creds: cred && cred.exists() ? cred.data() : null,
+      denied: !prof && !meals,
+    };
   },
   // admin
   async setAccess(uid, status) {

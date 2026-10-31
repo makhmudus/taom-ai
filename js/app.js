@@ -325,7 +325,9 @@ function Admin() {
         h('div', { class: 'kpi' }, h('b', null, String(groups.approved.length)), h('span', null, 'foydalanuvchi'))),
       h('button', { class: 'btn', style: { marginTop: '12px' }, onclick: newUserSheet },
         h('span', { html: I.plus, style: { display: 'contents' } }), 'Yangi foydalanuvchi qo‘shish'),
-      h('div', { class: 'seg', style: { margin: '14px 0' } },
+      adminFind(),
+      h('div', { class: 'section-title' }, h('h2', null, 'Zayavkalar')),
+      h('div', { class: 'seg', style: { margin: '0 0 14px' } },
         [['pending', `Kutilmoqda ${groups.pending.length}`], ['approved', `Ruxsat ${groups.approved.length}`], ['other', `Rad/blok ${groups.other.length}`]]
           .map(([k, l]) => h('button', { class: S.adminTab === k ? 'on' : '', onclick: () => { S.adminTab = k; renderView(); } }, l))),
       list.length ? h('div', { class: 'meals' }, list.map(card)) : h('div', { class: 'card empty' }, h('p', null, emptyTxt)),
@@ -1237,7 +1239,7 @@ function docSheet(kind) {
     ]],
     privacy: ['Maxfiylik siyosati', [
       ['Nima saqlanadi', 'Profilingiz (ism, yosh, bo‘y, vazn, maqsad), ovqat yozuvlari, kichik rasm nusxalari, suv va vazn tarixi.'],
-      ['Qayerda', store.mode === 'cloud' ? 'Google Firebase serverlarida, faqat sizning hisobingizga bog‘langan. Xavfsizlik qoidalari tufayli boshqa foydalanuvchi ma’lumotlaringizni ko‘ra olmaydi.' : 'Faqat shu telefonda (sinov rejimi).'],
+      ['Qayerda', store.mode === 'cloud' ? 'Google Firebase serverlarida, faqat sizning hisobingizga bog‘langan. Boshqa foydalanuvchilar ma’lumotlaringizni ko‘ra olmaydi. Ilova admini esa yordam berish uchun profilingiz va ovqat yozuvlaringizni ko‘ra oladi.' : 'Faqat shu telefonda (sinov rejimi).'],
       ['AI', 'Rasm va matn tahlil uchun Google Gemini’ga yuboriladi. Bepul tarifda Google bu ma’lumotlardan o‘z xizmatlarini yaxshilash uchun foydalanishi mumkin, shuning uchun rasmga shaxsiy narsalarni tushirmang.'],
       ['O‘chirish', 'Sozlamalar → “Akkauntni o‘chirish” barcha ma’lumotlarni butunlay o‘chiradi.'],
       ['Himoya', 'Ilova Google reCAPTCHA bilan himoyalangan: Google’ning Maxfiylik siyosati (policies.google.com/privacy) va Foydalanish shartlari (policies.google.com/terms) amal qiladi.'],
@@ -1259,3 +1261,100 @@ store.init().then(() => route()).catch(e => {
 // sana o‘zgarsa (yarim tun), bugungi kunga o‘tish
 let lastDay = dayKey();
 setInterval(() => { const d = dayKey(); if (d !== lastDay) { if (S.sel === lastDay) S.sel = d; lastDay = d; route(); } }, 60000);
+
+// ═════════════ Admin: foydalanuvchini topish va ko‘rish ═════════════
+function adminFind() {
+  const R = store.requests;
+  const norm = v => String(v || '').toLowerCase();
+  const q = norm(S.adminQ).trim();
+  const matches = q ? R.filter(r => [r.login, showLogin(r.email), r.email, r.name].some(v => norm(v).includes(q))) : [];
+  // aniq bitta mos kelsa — avtomatik ochiladi
+  if (q && matches.length === 1 && S.adminSel !== matches[0].id) { S.adminSel = matches[0].id; S.adminDate = dayKey(); }
+  if (q && S.adminSel && !matches.some(m => m.id === S.adminSel)) S.adminSel = null;
+
+  const inp = h('input', { class: 'input', type: 'search', placeholder: 'Login, email yoki ism', value: S.adminQ || '', autocapitalize: 'none', spellcheck: false, id: 'admin-q' });
+  inp.addEventListener('input', () => { S.adminQ = inp.value; S.adminFocus = true; renderView(); });
+  inp.addEventListener('blur', () => { S.adminFocus = false; });
+  if (S.adminFocus) requestAnimationFrame(() => { const el = document.getElementById('admin-q'); if (el) { el.focus(); const n = el.value.length; el.setSelectionRange(n, n); } });
+
+  const sel = R.find(r => r.id === S.adminSel);
+  return h('div', null,
+    h('div', { class: 'section-title' }, h('h2', null, 'Foydalanuvchini topish')),
+    h('div', { class: 'search' }, h('span', { class: 'search-ic', html: I.user }), inp),
+    q && !matches.length ? h('p', { class: 'muted-note' }, 'Hech kim topilmadi.') : null,
+    matches.length > 1 ? h('div', { class: 'list', style: { marginTop: '10px' } }, matches.slice(0, 8).map(r => h('button', {
+      class: 'row' + (r.id === S.adminSel ? ' row-sel' : ''), onclick: () => { S.adminSel = r.id; S.adminDate = dayKey(); renderView(); },
+    }, h('span', { class: 'ri' }, (r.name || r.email || '?').charAt(0).toUpperCase()),
+      h('span', { class: 'rt' }, h('b', null, r.name || 'Ismsiz'), h('span', null, r.managed ? 'Login: ' + (r.login || showLogin(r.email)) : r.email)),
+      h('span', { class: 'chip-status st-' + r.status }, STATUS_LBL[r.status] || r.status)))) : null,
+    sel ? UserDetail(sel) : null);
+}
+
+function UserDetail(r) {
+  const date = S.adminDate || dayKey();
+  const key = r.id + '|' + date;
+  if (!S.adminCache) S.adminCache = {};
+  const c = S.adminCache[key];
+  if (!c) {
+    S.adminCache[key] = { loading: true };
+    store.adminLoadUser(r.id, date).then(d => { S.adminCache[key] = d; renderView(); })
+      .catch(e => { S.adminCache[key] = { error: e.message || String(e) }; renderView(); });
+  }
+  const d = S.adminCache[key] || { loading: true };
+  const p = d.profile;
+  const T = p && p.done ? targets(p) : null;
+  const tot = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  (d.meals || []).forEach(m => { tot.kcal += m.kcal || 0; tot.protein += m.protein || 0; tot.carbs += m.carbs || 0; tot.fat += m.fat || 0; });
+  const dt = parseKey(date), today = dayKey();
+  const dateLbl = date === today ? 'Bugun' : date === addDays(today, -1) ? 'Kecha' : `${dt.getDate()} ${MONTHS[dt.getMonth()]}`;
+  const go = n => { S.adminDate = addDays(date, n); renderView(); };
+  const reload = () => { delete S.adminCache[key]; renderView(); };
+
+  const pwBox = (() => {
+    if (!d.creds) return h('span', { class: 'kv-v muted' }, r.managed ? 'Saqlanmagan (eski hisob)' : (r.email && !r.managed ? 'O‘zi qo‘ygan / Google — ko‘rinmaydi' : '—'));
+    const v = h('b', { class: 'kv-v mono' }, '••••••••');
+    let shown = false;
+    return h('span', { class: 'kv-pw' }, v,
+      h('button', { class: 'link', onclick: e => { shown = !shown; v.textContent = shown ? d.creds.password : '••••••••'; e.currentTarget.textContent = shown ? 'Yashirish' : 'Ko‘rsatish'; } }, 'Ko‘rsatish'),
+      h('button', { class: 'link', onclick: async () => { try { await navigator.clipboard.writeText(`Login: ${d.creds.login}\nParol: ${d.creds.password}`); toast('Nusxalandi'); } catch (e) { toast('Nusxalab bo‘lmadi'); } } }, 'Nusxalash'));
+  })();
+  const kv = (k, v) => h('div', { class: 'kv' }, h('span', { class: 'kv-k' }, k), typeof v === 'string' ? h('span', { class: 'kv-v' }, v) : v);
+  const since = r.decidedAt || r.requestedAt;
+
+  return h('div', { class: 'card ud' },
+    h('div', { class: 'req-top' },
+      h('div', { class: 'avatar' }, r.photo ? h('img', { src: r.photo, alt: '', referrerpolicy: 'no-referrer' }) : (r.name || r.email || '?').charAt(0).toUpperCase()),
+      h('div', { class: 'req-who' }, h('b', null, r.name || 'Ismsiz'), h('span', null, STATUS_LBL[r.status] || r.status)),
+      h('button', { class: 'round-btn', 'aria-label': 'Yangilash', html: I.refresh, onclick: reload })),
+    h('div', { class: 'kv-list' },
+      kv(r.managed ? 'Login' : 'Email', r.managed ? (r.login || showLogin(r.email)) : (r.email || '—')),
+      kv('Parol', pwBox),
+      kv('Qo‘shilgan', since ? (t => `${t.getDate()} ${MONTHS[t.getMonth()]} ${t.getFullYear()}, ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`)(new Date(since)) : '—'),
+      p ? kv('Profil', `${p.gender === 'm' ? 'Erkak' : 'Ayol'}, ${p.age} yosh, ${g1(p.height)} sm`) : null,
+      p ? kv('Vazn', `${g1(p.weight)} kg → ${g1(p.targetWeight)} kg (${(GOAL_LBL[p.goal] || '').toLowerCase()})`) : null,
+      T ? kv('Kunlik me’yor', `${fmt(T.kcal)} kkal`) : null),
+    d.loading ? h('p', { class: 'muted-note' }, 'Yuklanmoqda…') :
+    d.error ? h('p', { class: 'err' }, 'Yuklab bo‘lmadi: ' + d.error) :
+    d.denied ? h('div', { class: 'notice' }, 'Ma’lumotlarni o‘qishga ruxsat yo‘q. Firestore qoidalarini yangilang.') :
+    !p ? h('p', { class: 'muted-note' }, 'Foydalanuvchi hali profilini to‘ldirmagan.') : [
+      h('div', { class: 'ud-day' },
+        h('button', { class: 'round-btn', 'aria-label': 'Oldingi kun', html: I.back, onclick: () => go(-1) }),
+        h('b', null, dateLbl),
+        h('button', { class: 'round-btn', 'aria-label': 'Keyingi kun', html: I.chev, disabled: date >= today, onclick: () => go(1) })),
+      h('div', { class: 'ud-sum' },
+        h('div', null, h('b', null, fmt(tot.kcal)), h('span', null, T ? `/ ${fmt(T.kcal)} kkal` : 'kkal')),
+        h('div', { class: 'chips' },
+          h('span', null, h('i', { style: { background: C.protein } }), g1(tot.protein) + 'g'),
+          h('span', null, h('i', { style: { background: C.carbs } }), g1(tot.carbs) + 'g'),
+          h('span', null, h('i', { style: { background: C.fat } }), g1(tot.fat) + 'g'),
+          h('span', null, h('i', { style: { background: C.fiber } }), g1(d.water / 1000) + ' L suv'))),
+      d.meals.length ? h('div', { class: 'ud-meals' }, d.meals.map(m => {
+        const t = new Date(m.ts);
+        return h('div', { class: 'ud-meal' },
+          h('div', { class: 'thumb' }, m.photo ? h('img', { src: m.photo, alt: '', loading: 'lazy' }) : (m.emoji || '🍽️')),
+          h('div', { class: 'mbody' },
+            h('div', { class: 'mtop' }, h('b', null, m.name), h('span', { class: 'mtime' }, `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`)),
+            h('span', { class: 'ud-sub' }, `${MEAL_TYPES[m.type] || ''} · ${fmt(m.kcal)} kkal · O ${g1(m.protein)} · U ${g1(m.carbs)} · Y ${g1(m.fat)}`)));
+      })) : h('p', { class: 'muted-note' }, `${dateLbl} hech narsa kiritilmagan.`),
+    ]);
+}

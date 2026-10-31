@@ -55,12 +55,18 @@ service cloud.firestore {
     }
 
     // ── Foydalanuvchi ma’lumotlari: faqat egasi va faqat ruxsat berilgan bo‘lsa ──
+    // ── Admin yaratgan hisoblar paroli (faqat admin) ──
+    match /creds/{uid} {
+      allow read, write: if isAdmin();
+    }
+
     match /users/{uid} {
-      allow read, write: if canUse(uid);
+      allow read: if canUse(uid) || isAdmin();   // admin ham ko‘ra oladi
+      allow write: if canUse(uid);
       allow delete: if isOwner(uid);            // akkauntni o‘chirish har doim mumkin
 
       match /{col}/{doc} {
-        allow read: if canUse(uid) && col in ['meals', 'days', 'weights'];
+        allow read: if (canUse(uid) || isAdmin()) && col in ['meals', 'days', 'weights'];
         allow create, update: if canUse(uid) && col in ['meals', 'days', 'weights']
                               && request.resource.data.size() < 40;
         allow delete: if isOwner(uid);
