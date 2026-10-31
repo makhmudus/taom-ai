@@ -27,7 +27,7 @@ service cloud.firestore {
       // Foydalanuvchi faqat o‘ziga zayavka yarata oladi:
       //  • status "pending" — oddiy zayavka
       //  • status "approved" — faqat emaili admin ro‘yxatida (allowlist) bo‘lsa va tasdiqlangan bo‘lsa
-      allow create: if isOwner(uid)
+      allow create: if isAdmin() || (isOwner(uid)
         && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'photo', 'note', 'status', 'requestedAt', 'auto'])
         && request.resource.data.uid == uid
         && request.resource.data.email == myEmail()
@@ -36,7 +36,7 @@ service cloud.firestore {
         && (request.resource.data.status == 'pending'
             || (request.resource.data.status == 'approved'
                 && request.auth.token.email_verified == true
-                && exists(/databases/$(database)/documents/allowlist/$(myEmail()))));
+                && exists(/databases/$(database)/documents/allowlist/$(myEmail())))));
 
       // Statusni faqat admin o‘zgartiradi; foydalanuvchi faqat rad etilgandan keyin qayta so‘ray oladi
       allow update: if isAdmin()

@@ -553,3 +553,13 @@ textarea.input { resize: none; min-height: 96px; line-height: 1.4; }
 .pp-phone iframe { display: block; border: 0; border-radius: 42px; background: var(--bg); }
 .pp-notch { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); width: 96px; height: 26px; border-radius: 20px; background: #000; z-index: 2; pointer-events: none; }
 .pp-hint { color: rgba(255, 255, 255, .75); font-size: 13.5px; margin: 0; max-width: 46ch; text-align: center; }
+
+/* ── Admin: yangi foydalanuvchi ── */
+.cred-ok { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin: 10px auto 4px;
+  background: color-mix(in srgb, var(--turq) 16%, transparent); color: var(--turq); }
+.cred-ok svg { width: 32px; height: 32px; }
+.cred { padding: 6px 16px; }
+.cred-row { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px dashed var(--line); font-size: 16px; }
+.cred-row:last-child { border-bottom: 0; }
+.cred-row span { color: var(--muted); font-weight: 600; }
+.cred-row b { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 16.5px; letter-spacing: .02em; word-break: break-all; text-align: right; }

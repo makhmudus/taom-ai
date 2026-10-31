@@ -1,4 +1,4 @@
-import { store, dayKey, addDays } from './store.js';
+import { store, dayKey, addDays, showLogin } from './store.js';
 import { analyzeFood, aiAvailable, hasPersonalKey, setPersonalKey } from './ai.js';
 import { I, plateLogo, handArrow } from './icons.js';
 
@@ -75,7 +75,6 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.inst
 function stageOf() {
   if (!store.ready) return 'splash';
   if (!store.user) return 'auth';
-  if (store.mode === 'cloud' && store.user.provider === 'password' && !store.user.verified) return 'verify';
   if (store.mode === 'cloud' && !store.isAdmin) {
     if (!store.accessLoaded) return 'splash';
     const st = store.access ? store.access.status : 'none';
@@ -159,7 +158,7 @@ function Auth() {
 
   let mode = 'login';
   const name = h('input', { class: 'input', placeholder: 'Ismingiz', autocomplete: 'name' });
-  const email = h('input', { class: 'input', type: 'email', placeholder: 'email@gmail.com', autocomplete: 'email', inputmode: 'email' });
+  const email = h('input', { class: 'input', type: 'text', placeholder: 'login yoki email', autocomplete: 'username', autocapitalize: 'none', spellcheck: false });
   const pass = h('input', { class: 'input', type: 'password', placeholder: 'Parol (kamida 8 belgi)', autocomplete: 'current-password' });
   const nameField = h('label', { class: 'field', hidden: true }, h('span', null, 'Ism'), name);
   const submit = h('button', { class: 'btn', type: 'submit' }, 'Kirish');
@@ -174,8 +173,10 @@ function Auth() {
   };
   toggle.onclick = () => { mode = mode === 'login' ? 'signup' : 'login'; err.textContent = ''; sync(); };
   forgot.onclick = () => busy(forgot, async () => {
-    if (!email.value.trim()) throw new Error('Avval email manzilingizni yozing.');
-    await store.resetPassword(email.value.trim());
+    const v = email.value.trim();
+    if (!v) throw new Error('Avval email manzilingizni yozing.');
+    if (!v.includes('@')) throw new Error('Login bilan kirsangiz, yangi parolni admin’dan so‘rang.');
+    await store.resetPassword(v);
     toast('Parolni tiklash havolasi emailingizga yuborildi');
   });
   const form = h('form', { onsubmit: e => {
@@ -185,11 +186,10 @@ function Auth() {
       if (mode === 'signup') {
         if (pw.length < 8) throw { code: 'auth/weak-password' };
         await store.signUpEmail(name.value.trim(), em, pw);
-        toast('Tasdiqlash xati emailingizga yuborildi');
       } else await store.signInEmail(em, pw);
     });
   } }, nameField,
-    h('label', { class: 'field' }, h('span', null, 'Email'), email),
+    h('label', { class: 'field' }, h('span', null, 'Login yoki email'), email),
     h('label', { class: 'field' }, h('span', null, 'Parol'), pass),
     err, h('div', { style: { height: '12px' } }), submit);
   sync();
@@ -198,7 +198,7 @@ function Auth() {
   gbtn.onclick = () => busy(gbtn, () => store.signInGoogle());
 
   return h('div', { class: 'auth' }, hero, h('div', { class: 'auth-body' },
-    gbtn, h('div', { class: 'divider' }, 'yoki email bilan'), form,
+    gbtn, h('div', { class: 'divider' }, 'yoki login bilan'), form,
     h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, toggle, forgot),
     h('div', { class: 'auth-foot' }, h('span', { class: 'ico16', html: I.shield }),
       'Parollar Google Firebase’da shifrlangan holda saqlanadi.')));
@@ -291,10 +291,11 @@ function Admin() {
     return h('div', { class: 'card req' },
       h('div', { class: 'req-top' },
         h('div', { class: 'avatar' }, r.photo ? h('img', { src: r.photo, alt: '', referrerpolicy: 'no-referrer' }) : (r.name || r.email || '?').charAt(0).toUpperCase()),
-        h('div', { class: 'req-who' }, h('b', null, r.name || 'Ismsiz'), h('span', null, r.email)),
+        h('div', { class: 'req-who' }, h('b', null, r.name || 'Ismsiz'), h('span', null, r.managed ? 'Login: ' + (r.login || showLogin(r.email)) : r.email)),
         h('span', { class: 'req-time' }, ago(r.decidedAt && r.status !== 'pending' ? r.decidedAt : r.requestedAt))),
-      r.note ? h('div', { class: 'req-note' }, r.note) : null,
+      r.note && !r.managed ? h('div', { class: 'req-note' }, r.note) : null,
       r.auto ? h('div', { class: 'req-tag' }, 'Email ro‘yxati orqali avtomatik') : null,
+      r.managed ? h('div', { class: 'req-tag' }, 'Admin yaratgan hisob') : null,
       r.status === 'rejected' || r.status === 'blocked' ? h('div', { class: 'req-tag' }, STATUS_LBL[r.status]) : null,
       h('div', { class: 'btn-row', style: { marginTop: '12px' } }, actions));
   };
@@ -322,6 +323,8 @@ function Admin() {
       h('div', { class: 'kpis' },
         h('div', { class: 'kpi' }, h('b', { style: { color: groups.pending.length ? 'var(--saffron)' : null } }, String(groups.pending.length)), h('span', null, 'yangi zayavka')),
         h('div', { class: 'kpi' }, h('b', null, String(groups.approved.length)), h('span', null, 'foydalanuvchi'))),
+      h('button', { class: 'btn', style: { marginTop: '12px' }, onclick: newUserSheet },
+        h('span', { html: I.plus, style: { display: 'contents' } }), 'Yangi foydalanuvchi qo‘shish'),
       h('div', { class: 'seg', style: { margin: '14px 0' } },
         [['pending', `Kutilmoqda ${groups.pending.length}`], ['approved', `Ruxsat ${groups.approved.length}`], ['other', `Rad/blok ${groups.other.length}`]]
           .map(([k, l]) => h('button', { class: S.adminTab === k ? 'on' : '', onclick: () => { S.adminTab = k; renderView(); } }, l))),
@@ -335,6 +338,65 @@ function Admin() {
           h('button', { class: 'round-btn', 'aria-label': 'Ro‘yxatdan olib tashlash', html: I.trash, onclick: async () => {
             if (await confirmSheet({ title: 'Ro‘yxatdan olib tashlansinmi?', text: `${a.email} uchun avtomatik ruxsat bekor qilinadi. Allaqachon kirgan bo‘lsa, ruxsati saqlanadi.`, ok: 'Olib tashlash', danger: true })) store.removeAllow(a.id).catch(e => toast(e.message));
           } })))) : null)));
+}
+
+// ═════════════ Admin: login va parol bilan foydalanuvchi yaratish ═════════════
+function genPassword() {
+  const syl = ['ba', 'bo', 'da', 'do', 'ka', 'ko', 'la', 'lo', 'ma', 'mo', 'na', 'no', 'ra', 'ro', 'sa', 'so', 'ta', 'to', 'zu', 'yo'];
+  const r = n => crypto.getRandomValues(new Uint32Array(1))[0] % n;
+  return syl[r(20)] + syl[r(20)] + syl[r(20)] + String(1000 + r(9000));
+}
+function newUserSheet() {
+  const name = h('input', { class: 'input', placeholder: 'Masalan: Dilnoza opa', maxlength: 60 });
+  const login = h('input', { class: 'input', placeholder: 'masalan: onam', maxlength: 30, autocapitalize: 'none', spellcheck: false, autocomplete: 'off' });
+  const pass = h('input', { class: 'input', value: genPassword(), maxlength: 40, autocomplete: 'off', spellcheck: false });
+  const regen = h('button', { class: 'round-btn', type: 'button', 'aria-label': 'Yangi parol', html: I.refresh, onclick: () => { pass.value = genPassword(); } });
+  const err = h('div', { class: 'err', role: 'alert' });
+  const btn = h('button', { class: 'btn' }, 'Yaratish');
+  login.addEventListener('input', () => { login.value = login.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''); });
+  const sh = openSheet([
+    h('h3', null, 'Yangi foydalanuvchi'),
+    h('p', { class: 'sub' }, 'Login va parolni yaratib, foydalanuvchiga berasiz. Pochta va tasdiqlash kodi kerak emas, hisob darhol ochiq bo‘ladi.'),
+    h('label', { class: 'field' }, h('span', null, 'Ism'), name),
+    h('label', { class: 'field' }, h('span', null, 'Login (lotin harflari va raqamlar)'), login),
+    h('label', { class: 'field' }, h('span', null, 'Parol'), h('div', { class: 'fix', style: { marginTop: 0 } }, pass, regen)),
+    err, h('div', { style: { height: '8px' } }), btn,
+  ]);
+  setTimeout(() => name.focus(), 300);
+  btn.onclick = async () => {
+    err.textContent = '';
+    const n = name.value.trim(), l = login.value.trim(), p = pass.value.trim();
+    if (!n) return void (err.textContent = 'Ismni yozing.');
+    if (!/^[a-z0-9._-]{3,30}$/.test(l)) return void (err.textContent = 'Login kamida 3 ta lotin harf yoki raqamdan iborat bo‘lsin.');
+    if (p.length < 8) return void (err.textContent = 'Parol kamida 8 belgi bo‘lsin.');
+    btn.disabled = true; btn.textContent = 'Yaratilmoqda…';
+    try {
+      const r = await store.createManagedUser(n, l, p);
+      showCredentials(sh, n, r.login, p);
+    } catch (e) {
+      console.error(e);
+      err.textContent = e && e.code === 'auth/email-already-in-use' ? 'Bu login band. Boshqasini tanlang.'
+        : e && e.code === 'permission-denied' ? 'Ruxsat yo‘q: Firestore qoidalarini yangilang (admin hisob yarata olishi uchun).'
+        : authErr(e);
+      btn.disabled = false; btn.textContent = 'Yaratish';
+    }
+  };
+}
+function showCredentials(sh, name, login, pass) {
+  const url = location.origin + location.pathname;
+  const text = `Taom AI — kaloriya hisoblagich\n${url}\n\nLogin: ${login}\nParol: ${pass}`;
+  const row = (label, val) => h('div', { class: 'cred-row' }, h('span', null, label), h('b', null, val));
+  sh.set([
+    h('div', { class: 'cred-ok', html: I.check }),
+    h('h3', { style: { textAlign: 'center' } }, `${name} uchun hisob tayyor`),
+    h('p', { class: 'sub', style: { textAlign: 'center' } }, 'Shu ma’lumotlarni foydalanuvchiga yuboring. Parol keyin boshqa ko‘rinmaydi.'),
+    h('div', { class: 'card cred' }, row('Sayt', url.replace(/^https?:\/\//, '')), row('Login', login), row('Parol', pass)),
+    h('div', { class: 'btn-row', style: { marginTop: '16px' } },
+      h('button', { class: 'btn ghost', onclick: async () => { try { await navigator.clipboard.writeText(text); toast('Nusxalandi'); } catch (e) { toast('Nusxalab bo‘lmadi'); } } }, 'Nusxalash'),
+      navigator.share ? h('button', { class: 'btn', onclick: () => navigator.share({ text }).catch(() => {}) }, 'Yuborish') :
+        h('button', { class: 'btn', onclick: () => sh.close() }, 'Tayyor')),
+    navigator.share ? h('button', { class: 'link', style: { display: 'block', margin: '14px auto 0' }, onclick: () => sh.close() }, 'Yopish') : null,
+  ]);
 }
 
 // ═════════════ Telefon ko‘rinishi (faqat admin) ═════════════
@@ -675,7 +737,7 @@ function openSheet(content, { full = false, onClose } = {}) {
   const sh = h('div', { class: 'sheet' + (full ? ' full' : ''), role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'grab' }), body);
   const api = {
     el: sh, body,
-    set(c) { body.replaceChildren(...[].concat(c)); },
+    set(c) { body.replaceChildren(...[].concat(c).flat(Infinity).filter(x => x != null && x !== false)); },
     close() {
       sh.classList.remove('on'); scrim.classList.remove('on');
       setTimeout(() => { sh.remove(); scrim.remove(); }, 320);
@@ -1035,8 +1097,8 @@ function Settings() {
   const themeSeg = h('div', { class: 'seg', style: { margin: '4px 0' } },
     [['auto', 'Avto'], ['light', 'Yorug‘'], ['dark', 'Qorong‘i']].map(([k, l]) => h('button', { class: themeNow === k ? 'on' : '', onclick: () => { try { localStorage.setItem('taom.theme', k); } catch (e) {} applyTheme(); renderView(); } }, l)));
 
-  const providerLbl = u.provider === 'google.com' ? 'Google hisobi' : u.provider === 'local' ? 'Sinov rejimi (faqat shu telefonda)' : u.email;
-  const unverified = store.mode === 'cloud' && u.provider === 'password' && !u.verified;
+  const providerLbl = u.provider === 'google.com' ? 'Google hisobi' : u.provider === 'local' ? 'Sinov rejimi (faqat shu telefonda)' : 'Login: ' + showLogin(u.email);
+  const unverified = false;
 
   const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 

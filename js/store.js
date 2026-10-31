@@ -12,6 +12,10 @@ export const addDays = (key, n) => {
   const [y, m, d] = key.split('-').map(Number);
   return dayKey(new Date(y, m - 1, d + n));
 };
+// Login (pochtasiz) → ichki email. Bu domen hech qachon xat olmaydi.
+export const LOGIN_DOMAIN = 'taom.example.com';
+export const toEmail = v => { v = String(v || '').trim().toLowerCase(); return v.includes('@') ? v : `${v}@${LOGIN_DOMAIN}`; };
+export const showLogin = e => String(e || '').replace('@' + LOGIN_DOMAIN, '');
 const clean = o => JSON.parse(JSON.stringify(o));
 const uid6 = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
 
@@ -67,7 +71,7 @@ export const store = {
         localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }),
       });
     } catch (e) { db = fsM.getFirestore(app); }
-    this.fb = { app, auth, db, A: authM, F: fsM };
+    this.fb = { app, auth, db, A: authM, F: fsM, appM };
 
     await new Promise(resolve => {
       let first = true;
@@ -201,13 +205,14 @@ export const store = {
   },
   async signInEmail(email, pass) {
     const { auth, A } = this.fb;
-    await A.signInWithEmailAndPassword(auth, email, pass);
+    await A.signInWithEmailAndPassword(auth, toEmail(email), pass);
   },
   async signUpEmail(name, email, pass) {
     const { auth, A } = this.fb;
+    email = toEmail(email);
     const cred = await A.createUserWithEmailAndPassword(auth, email, pass);
     if (name) await A.updateProfile(cred.user, { displayName: name });
-    try { await A.sendEmailVerification(cred.user); } catch (e) {}
+    if (!email.endsWith('@' + LOGIN_DOMAIN)) { try { await A.sendEmailVerification(cred.user); } catch (e) {} }
     this.user = this._mapUser(cred.user); this.emit('auth');
   },
   async resetPassword(email) {
@@ -301,6 +306,27 @@ export const store = {
       });
       return true;
     } catch (e) { return false; }
+  },
+  // admin: login va parol bilan yangi foydalanuvchi yaratish (admin hisobidan chiqmasdan)
+  async createManagedUser(name, login, password) {
+    const { appM, A, F, db } = this.fb;
+    const email = toEmail(login);
+    const tmp = appM.initializeApp(firebaseConfig, 'create-' + Date.now());
+    try {
+      const a2 = A.initializeAuth(tmp, { persistence: A.inMemoryPersistence });
+      const cred = await A.createUserWithEmailAndPassword(a2, email, password);
+      if (name) await A.updateProfile(cred.user, { displayName: name });
+      const uid = cred.user.uid;
+      await A.signOut(a2);
+      const now = Date.now();
+      await F.setDoc(F.doc(db, 'access', uid), {
+        uid, email, name: String(name || '').slice(0, 60), photo: '', note: 'Admin qo‘shgan',
+        status: 'approved', requestedAt: now, decidedAt: now, managed: true, login: showLogin(email),
+      });
+      return { uid, login: showLogin(email) };
+    } finally {
+      try { await appM.deleteApp(tmp); } catch (e) {}
+    }
   },
   // admin
   async setAccess(uid, status) {
