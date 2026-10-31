@@ -30,8 +30,8 @@ export const firebaseConfig = {
 };
 */
 
-// App Check (reCAPTCHA v3) sayt kaliti — begona dasturlar AI limitini ishlatolmasligi uchun.
-// google.com/recaptcha/admin → v3 → domen: makhmudus.github.io → "Site key" ni shu yerga qo‘ying.
+// App Check (Fraud Defense / reCAPTCHA Enterprise) sayt kaliti — begona dasturlar AI limitini ishlatolmasligi uchun.
+// Firebase → App Check → Apps → Fraud Defense provayderida ham shu kalit turadi.
 // null bo‘lsa App Check o‘chiq.
 export const APPCHECK_SITE_KEY = '6LfJsQkuAAAAAFbnV1uKfdK-x_AUl4qSSY86pYQk';
 

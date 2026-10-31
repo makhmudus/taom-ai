@@ -56,7 +56,7 @@ export const store = {
     if (APPCHECK_SITE_KEY) {
       try {
         const ac = await import(CDN + 'firebase-app-check.js');
-        ac.initializeAppCheck(app, { provider: new ac.ReCaptchaV3Provider(APPCHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
+        ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(APPCHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
       } catch (e) { console.error('App Check', e); }
     }
     const auth = authM.getAuth(app);

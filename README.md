@@ -30,7 +30,7 @@ Android (Chrome): ⋮ → “Bosh ekranga qo‘shish” → “O‘rnatish”. Y
 
 7. **App Check** (begonalar AI limitini ishlatolmasligi uchun):
    - https://www.google.com/recaptcha/admin/create → turi **reCAPTCHA v3** → domen `makhmudus.github.io` → **Site key** va **Secret key** ni oling.
-   - Firebase → **Build → App Check** → ilovangiz → **reCAPTCHA** → *Secret key* ni qo‘ying → Save.
+   - Firebase → **App Check** → Apps → ilovangiz → **Fraud Defense (reCAPTCHA Enterprise)** → *Site key* ni qo‘ying → Save.
    - *Site key* ni `js/config.js` → `APPCHECK_SITE_KEY` ga qo‘ying.
    - Hammasi ishlayotganini ko‘rgach, App Check → **APIs** bo‘limida *Firebase AI Logic* va *Cloud Firestore* uchun **Enforce** ni bosing.
 
