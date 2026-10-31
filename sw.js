@@ -1,5 +1,5 @@
 // Taom AI service worker: ilova fayllari — avval internet, bo‘lmasa kesh; shriftlar va Firebase SDK — kesh.
-const V = 'taom-ai-v2';
+const V = 'taom-ai-v3';
 const CORE = ['./', './index.html', './styles.css', './js/app.js', './js/store.js', './js/ai.js', './js/icons.js', './js/config.js',
   './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });

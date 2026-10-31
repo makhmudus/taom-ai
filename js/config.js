@@ -33,7 +33,7 @@ export const firebaseConfig = {
 // App Check (reCAPTCHA v3) sayt kaliti — begona dasturlar AI limitini ishlatolmasligi uchun.
 // google.com/recaptcha/admin → v3 → domen: makhmudus.github.io → "Site key" ni shu yerga qo‘ying.
 // null bo‘lsa App Check o‘chiq.
-export const APPCHECK_SITE_KEY = null;
+export const APPCHECK_SITE_KEY = '6LfJsQkuAAAAAFbnV1uKfdK-x_AUl4qSSY86pYQk';
 
 export const FIREBASE_VERSION = '12.19.0';
 
