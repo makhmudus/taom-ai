@@ -435,3 +435,6 @@ textarea.input { resize: none; min-height: 96px; line-height: 1.4; }
 .nav-btn.has-badge::after { content: ''; position: absolute; top: 12px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--pom); box-shadow: 0 0 0 2px var(--surface); }
 .row .ri { position: relative; }
 .dot-badge { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--pom); box-shadow: 0 0 0 2px var(--surface); }
+
+/* reCAPTCHA belgisi yashirilgan — Maxfiylik siyosatida Google reCAPTCHA haqida yozilgan */
+.grecaptcha-badge { visibility: hidden !important; }

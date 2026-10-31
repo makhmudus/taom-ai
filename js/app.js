@@ -724,8 +724,9 @@ function textAdd() {
 
 function runAnalysis(input, meta) {
   if (!aiAvailable()) {
-    toast('Avval Sozlamalarda Gemini kalitini kiriting');
-    S.view = 'settings'; renderView(); return;
+    if (store.mode === 'local' || store.isAdmin) { toast('Avval Sozlamalarda Gemini kalitini kiriting'); S.view = 'settings'; renderView(); }
+    else toast('AI vaqtincha ishlamayapti. Keyinroq urinib ko‘ring.');
+    return;
   }
   const photoBox = () => h('div', { class: 'res-photo' },
     meta.preview ? h('img', { src: meta.preview, alt: '' }) : h('span', null, '🍽️'),
@@ -1054,7 +1055,7 @@ function Settings() {
       h('div', { class: 'list' },
         h('div', { class: 'row' }, h('span', { class: 'ri', html: I.moon }), h('span', { class: 'rt' }, h('b', null, 'Ko‘rinish'), themeSeg)),
         !isStandalone ? row('download', 'Telefonga o‘rnatish', 'Ilova sifatida bosh ekranga qo‘shish', installApp) : null,
-        row('key', 'Gemini kaliti', hasPersonalKey() ? 'Shaxsiy kalit ulangan' : (store.mode === 'cloud' ? 'Shart emas — Firebase orqali ishlaydi' : 'Kiritilmagan — AI uchun kerak'), keySheet)),
+        store.mode === 'local' || store.isAdmin ? row('key', 'Gemini kaliti', hasPersonalKey() ? 'Shaxsiy kalit ulangan' : (store.mode === 'cloud' ? 'Shart emas — Firebase orqali ishlaydi' : 'Kiritilmagan — AI uchun kerak'), keySheet) : null),
 
       h('div', { class: 'group-title' }, 'Ma’lumot'),
       h('div', { class: 'list' },
@@ -1142,6 +1143,7 @@ function docSheet(kind) {
       ['Qayerda', store.mode === 'cloud' ? 'Google Firebase serverlarida, faqat sizning hisobingizga bog‘langan. Xavfsizlik qoidalari tufayli boshqa foydalanuvchi ma’lumotlaringizni ko‘ra olmaydi.' : 'Faqat shu telefonda (sinov rejimi).'],
       ['AI', 'Rasm va matn tahlil uchun Google Gemini’ga yuboriladi. Bepul tarifda Google bu ma’lumotlardan o‘z xizmatlarini yaxshilash uchun foydalanishi mumkin, shuning uchun rasmga shaxsiy narsalarni tushirmang.'],
       ['O‘chirish', 'Sozlamalar → “Akkauntni o‘chirish” barcha ma’lumotlarni butunlay o‘chiradi.'],
+      ['Himoya', 'Ilova Google reCAPTCHA bilan himoyalangan: Google’ning Maxfiylik siyosati (policies.google.com/privacy) va Foydalanish shartlari (policies.google.com/terms) amal qiladi.'],
     ]],
   }[kind];
   openSheet([h('h3', null, D[0]), h('div', { class: 'doc' }, D[1].map(([t, x]) => [h('h4', null, t), h('p', null, x)])),

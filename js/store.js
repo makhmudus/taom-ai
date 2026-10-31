@@ -1,5 +1,5 @@
 // Ma’lumotlar qatlami: Firebase (Auth + Firestore) yoki sinov rejimi (localStorage).
-import { firebaseConfig, FIREBASE_VERSION, ADMIN_EMAILS } from './config.js';
+import { firebaseConfig, FIREBASE_VERSION, ADMIN_EMAILS, APPCHECK_SITE_KEY } from './config.js';
 
 const CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
 const WINDOW_DAYS = 120; // shuncha kunlik ovqat va suv tarixi jonli sinxronlanadi
@@ -52,6 +52,13 @@ export const store = {
       import(CDN + 'firebase-firestore.js'),
     ]);
     const app = appM.initializeApp(firebaseConfig);
+    // App Check boshqa xizmatlardan OLDIN yoqiladi
+    if (APPCHECK_SITE_KEY) {
+      try {
+        const ac = await import(CDN + 'firebase-app-check.js');
+        ac.initializeAppCheck(app, { provider: new ac.ReCaptchaV3Provider(APPCHECK_SITE_KEY), isTokenAutoRefreshEnabled: true });
+      } catch (e) { console.error('App Check', e); }
+    }
     const auth = authM.getAuth(app);
     auth.languageCode = 'uz';
     let db;

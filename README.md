@@ -28,6 +28,12 @@ Android (Chrome): ⋮ → “Bosh ekranga qo‘shish” → “O‘rnatish”. Y
 5. **Build → AI Logic → Get started** → **Gemini Developer API** (bepul) ni tanlang.
 6. ⚙️ **Project settings → Your apps → Web (`</>`)** → nomi “Taom AI” → **Register** → chiqqan `firebaseConfig` ni `js/config.js` ga qo‘ying.
 
+7. **App Check** (begonalar AI limitini ishlatolmasligi uchun):
+   - https://www.google.com/recaptcha/admin/create → turi **reCAPTCHA v3** → domen `makhmudus.github.io` → **Site key** va **Secret key** ni oling.
+   - Firebase → **Build → App Check** → ilovangiz → **reCAPTCHA** → *Secret key* ni qo‘ying → Save.
+   - *Site key* ni `js/config.js` → `APPCHECK_SITE_KEY` ga qo‘ying.
+   - Hammasi ishlayotganini ko‘rgach, App Check → **APIs** bo‘limida *Firebase AI Logic* va *Cloud Firestore* uchun **Enforce** ni bosing.
+
 Loyiha **Spark (bepul)** tarifida qoladi. Billing ulamang, aks holda Gemini bepul tarifi ishlamaydi.
 
 ## Texnik
