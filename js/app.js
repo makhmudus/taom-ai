@@ -441,9 +441,11 @@ function Nav() {
     class: 'nav-btn' + (S.view === id ? ' on' : ''), 'data-v': id, 'aria-label': label,
     onclick: () => { S.view = id; S.fabOpen = false; syncFab(); renderView(); window.scrollTo(0, 0); },
   }, h('span', { html: I[icon], style: { display: 'contents' } }), h('span', null, label));
-  const fab = h('button', { class: 'fab', 'aria-label': 'Ovqat qo‘shish', html: I.plus, onclick: () => { S.fabOpen = !S.fabOpen; syncFab(); } });
+  const fab = h('button', { class: 'fab', 'aria-label': 'Ovqat qo‘shish', onclick: () => { S.fabOpen = !S.fabOpen; syncFab(); } },
+    h('span', { html: I.plus, style: { display: 'contents' } }), h('span', { class: 'fab-label' }, 'Ovqat qo‘shish'));
   return h('nav', { class: 'nav' }, h('div', { class: 'nav-inner' },
-    btn('home', 'home', 'Asosiy'), btn('stats', 'chart', 'Hisobot'), h('span'), btn('weight', 'scale', 'Vazn'), btn('settings', 'settings', 'Sozlamalar'), fab));
+    h('div', { class: 'nav-brand', html: plateLogo('') + '<span>Taom AI</span>' }),
+    btn('home', 'home', 'Asosiy'), btn('stats', 'chart', 'Hisobot'), h('span', { class: 'nav-gap' }), btn('weight', 'scale', 'Vazn'), btn('settings', 'settings', 'Sozlamalar'), fab));
 }
 
 function FabMenu() {
@@ -550,7 +552,7 @@ function Home() {
         h('div', { html: handArrow }));
 
   const selD = parseKey(sel);
-  return h('div', null, hero, h('div', { class: 'content' },
+  return h('div', { class: 'home' }, hero, h('div', { class: 'content' },
     h('div', { class: 'macros' }, macro('protein', 'Oqsil', 'protein'), macro('carbs', 'Uglevod', 'carbs'), macro('fat', 'Yog‘', 'fat')),
     waterCard,
     h('div', { class: 'section-title' },

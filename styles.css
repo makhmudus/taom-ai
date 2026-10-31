@@ -438,3 +438,96 @@ textarea.input { resize: none; min-height: 96px; line-height: 1.4; }
 
 /* reCAPTCHA belgisi yashirilgan — Maxfiylik siyosatida Google reCAPTCHA haqida yozilgan */
 .grecaptcha-badge { visibility: hidden !important; }
+
+/* ═════════════ Kompyuter / noutbuk (≥ 900px) ═════════════ */
+.nav-brand, .fab-label { display: none; }
+
+@media (min-width: 900px) {
+  #app { max-width: none; }
+  body { background: var(--bg); }
+
+  /* Chap menyu paneli */
+  .nav { left: 0; top: 0; bottom: 0; transform: none; width: 248px; max-width: none; padding: 20px 16px; }
+  .nav-inner {
+    height: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px;
+    border-radius: 28px; padding: 18px 12px; background: var(--surface); backdrop-filter: none;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 21px; letter-spacing: -.02em; padding: 4px 10px 22px; order: -3; }
+  .nav-brand svg { width: 32px; height: 32px; }
+  .nav-gap { display: none; }
+  .nav-btn { flex-direction: row; justify-content: flex-start; gap: 14px; height: 50px; padding: 0 14px; border-radius: 14px; font-size: 15.5px; font-weight: 700; }
+  .nav-btn:hover { background: var(--surface-2); color: var(--text); }
+  .nav-btn.on { background: var(--surface-2); color: var(--text); }
+  .nav-btn.has-badge::after { top: 14px; left: 32px; }
+  .fab {
+    position: static; transform: none; order: -2; width: 100%; height: 54px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 16px;
+    box-shadow: 0 10px 22px -10px rgba(27, 42, 107, .6);
+  }
+  .fab svg { width: 22px; height: 22px; }
+  .fab-label { display: inline; font-weight: 800; font-size: 15.5px; }
+  .fab:hover { filter: brightness(1.12); }
+
+  .fab-menu { left: 272px; top: 96px; bottom: auto; transform: none; width: auto; height: auto; display: flex; flex-direction: column; gap: 10px; }
+  .fab-item { position: static; flex-direction: row; gap: 12px; transform: translateX(-16px); margin: 0 !important; }
+  .fab-item .fi { width: 54px; height: 54px; border-radius: 18px; }
+  .fab-item .fi svg { width: 26px; height: 26px; }
+  .fab-menu.on .fab-item { transform: none; }
+
+  /* Asosiy maydon */
+  .view { margin-left: 248px; min-height: 100vh; }
+  .view > div { max-width: 1120px; margin: 0 auto; padding: 0 36px 48px; }
+  .content { padding: 0 0 40px; }
+  .page-head { padding: 40px 0 12px; }
+  .page-head h1 { font-size: 36px; }
+
+  /* Asosiy sahifa: chapda lagan, o‘ngda ma’lumotlar */
+  .view > .home { max-width: 720px; padding-top: 24px; }
+  .home .hero { border-radius: 34px; padding: 20px 20px 28px; margin-bottom: 28px; }
+  .home .hero .brand { visibility: hidden; }
+  .home .content { padding: 0; }
+  .home .macros { margin-top: 0; gap: 14px; }
+  .home .macro { padding: 18px 16px 16px; }
+  .home .macro .mv { font-size: 22px; }
+  .home .meals { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .home .section-title { margin-top: 30px; }
+  .meal { transition: transform .15s; }
+  .meal:hover { transform: translateY(-2px); }
+
+  /* Boshqa sahifalar */
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .view > div:not(.home) { max-width: 860px; }
+  .card .chart { max-height: 300px; }
+  .row:hover { background: var(--surface-2); }
+
+  /* Oynalar ekran o‘rtasida */
+  .sheet {
+    top: 50%; bottom: auto; max-width: 560px; border-radius: 28px; max-height: 88vh;
+    transform: translate(-50%, -46%) scale(.98); opacity: 0; transition: transform .25s cubic-bezier(.2,.9,.25,1), opacity .2s;
+  }
+  .sheet.on { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet.full { height: auto; max-height: 90vh; }
+  .sheet .grab { visibility: hidden; height: 4px; }
+  .res-photo { height: 280px; border-radius: 0; }
+
+  /* Kirish ekrani: ikki ustun */
+  .auth { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
+  .auth-hero { border-radius: 0 44px 44px 0; display: flex; flex-direction: column; justify-content: center; padding: 64px 7vw; }
+  .auth-hero h1 { font-size: 56px; }
+  .auth-hero p { font-size: 20px; max-width: 30ch; }
+  .auth-body { justify-content: center; max-width: 460px; width: 100%; margin: 0 auto; padding: 48px 32px; }
+  .auth-foot { margin-top: 18px; }
+  .gate-hero h1 { font-size: 44px; }
+
+  /* Profil savollari */
+  .ob { max-width: 600px; margin: 0 auto; padding-top: 48px; }
+}
+
+/* Keng ekran: asosiy sahifa ikki ustunda */
+@media (min-width: 1180px) {
+  .view > .home { max-width: 1180px; display: grid; grid-template-columns: 400px 1fr; gap: 28px; align-items: start; }
+  .home .hero { position: sticky; top: 24px; margin-bottom: 0; }
+}
+@media (min-width: 1360px) {
+  .view > .home { grid-template-columns: 440px 1fr; }
+}
