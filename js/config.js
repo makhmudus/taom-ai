@@ -11,7 +11,14 @@
 //    ma’lumotlar faqat shu telefonda saqlanadi, AI uchun esa
 //    Sozlamalarda shaxsiy Gemini kaliti kiritiladi.
 
-export const firebaseConfig = null;
+export const firebaseConfig = {
+  apiKey: "AIzaSyCjgdTXIU6KHANvEZMaikQxBShDPrKrJfs",
+  authDomain: "taom-ai-852bd.firebaseapp.com",
+  projectId: "taom-ai-852bd",
+  storageBucket: "taom-ai-852bd.firebasestorage.app",
+  messagingSenderId: "788261227847",
+  appId: "1:788261227847:web:e9f591e314d5eabbe35062"
+};
 /* Namuna:
 export const firebaseConfig = {
   apiKey: "AIza...",
