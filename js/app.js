@@ -618,7 +618,7 @@ function openResult(m, mode) {
 
   function build() {
     const name = h('input', { class: 'res-name', value: m.name, 'aria-label': 'Taom nomi', maxlength: 60, oninput: e => { m.name = e.target.value; } });
-    const multOut = h('output', null, '×' + g1(m.mult));
+    const multOut = h('output', null, '×' + Math.round(m.mult * 100) / 100);
     const setMult = d => { m.mult = clamp(Math.round((m.mult + d) * 4) / 4, 0.25, 5); draw(); };
     const fixInp = h('input', { class: 'input', placeholder: 'Masalan: guruch emas, grechka edi', maxlength: 200 });
     const fixBtn = h('button', { class: 'round-btn', 'aria-label': 'Qayta hisoblash', html: I.send });
