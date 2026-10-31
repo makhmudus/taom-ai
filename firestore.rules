@@ -1,17 +1,72 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Har bir foydalanuvchi faqat o‘z ma’lumotlarini o‘qiy va yoza oladi
+
+    function signedIn() { return request.auth != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+
+    // ⚠️ Admin emailini shu yerda va js/config.js → ADMIN_EMAILS ichida bir xil yozing
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && myEmail() in ['mahmudkilbot@gmail.com'];
+    }
+
+    function accessDoc(uid) { return /databases/$(database)/documents/access/$(uid); }
+    function isApproved(uid) {
+      return exists(accessDoc(uid)) && get(accessDoc(uid)).data.status == 'approved';
+    }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function canUse(uid) { return isOwner(uid) && (isAdmin() || isApproved(uid)); }
+
+    // ── Zayavkalar: access/{uid} ──
+    match /access/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+
+      // Foydalanuvchi faqat o‘ziga zayavka yarata oladi:
+      //  • status "pending" — oddiy zayavka
+      //  • status "approved" — faqat emaili admin ro‘yxatida (allowlist) bo‘lsa va tasdiqlangan bo‘lsa
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'name', 'photo', 'note', 'status', 'requestedAt', 'auto'])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == myEmail()
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.note is string && request.resource.data.note.size() <= 200
+        && (request.resource.data.status == 'pending'
+            || (request.resource.data.status == 'approved'
+                && request.auth.token.email_verified == true
+                && exists(/databases/$(database)/documents/allowlist/$(myEmail()))));
+
+      // Statusni faqat admin o‘zgartiradi; foydalanuvchi faqat rad etilgandan keyin qayta so‘ray oladi
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && resource.data.status == 'rejected'
+            && request.resource.data.status == 'pending'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'note', 'requestedAt'])
+            && request.resource.data.note is string && request.resource.data.note.size() <= 200);
+
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // ── Oldindan ruxsat berilgan emaillar ──
+    match /allowlist/{email} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Foydalanuvchi ma’lumotlari: faqat egasi va faqat ruxsat berilgan bo‘lsa ──
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if canUse(uid);
+      allow delete: if isOwner(uid);            // akkauntni o‘chirish har doim mumkin
+
       match /{col}/{doc} {
-        allow read, delete: if request.auth != null && request.auth.uid == uid
-                            && col in ['meals', 'days', 'weights'];
-        allow create, update: if request.auth != null && request.auth.uid == uid
-                              && col in ['meals', 'days', 'weights']
-                              && request.resource.size() < 120;           // maydonlar soni chegarasi
+        allow read: if canUse(uid) && col in ['meals', 'days', 'weights'];
+        allow create, update: if canUse(uid) && col in ['meals', 'days', 'weights']
+                              && request.resource.data.size() < 40;
+        allow delete: if isOwner(uid);
       }
     }
+
     match /{document=**} { allow read, write: if false; }
   }
 }

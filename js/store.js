@@ -1,5 +1,5 @@
 // Ma’lumotlar qatlami: Firebase (Auth + Firestore) yoki sinov rejimi (localStorage).
-import { firebaseConfig, FIREBASE_VERSION } from './config.js';
+import { firebaseConfig, FIREBASE_VERSION, ADMIN_EMAILS } from './config.js';
 
 const CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
 const WINDOW_DAYS = 120; // shuncha kunlik ovqat va suv tarixi jonli sinxronlanadi
@@ -24,8 +24,15 @@ export const store = {
   meals: [],           // so‘nggi WINDOW_DAYS kun
   days: {},            // {date: {water}}
   weights: [],         // [{id, date, kg}]
+  access: null,        // {status: pending|approved|rejected|blocked, ...}
+  accessLoaded: false,
+  isAdmin: false,
+  requests: [],        // admin uchun: barcha zayavkalar
+  allowlist: [],       // admin uchun: oldindan ruxsat berilgan emaillar
   _listeners: new Set(),
   _unsubs: [],
+  _dataUnsubs: [],
+  _dataOn: false,
   fb: null,
 
   onChange(fn) { this._listeners.add(fn); return () => this._listeners.delete(fn); },
@@ -61,9 +68,11 @@ export const store = {
         this._detach();
         if (u) {
           this.user = this._mapUser(u);
+          this.isAdmin = !!(u.email && u.emailVerified && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(u.email.toLowerCase()));
           this._attachCloud(u.uid);
         } else {
-          this.user = null; this.profile = null; this.profileLoaded = true;
+          this.user = null; this.profile = null; this.profileLoaded = true; this.isAdmin = false;
+          this.access = null; this.accessLoaded = true; this.requests = []; this.allowlist = [];
           this.meals = []; this.days = {}; this.weights = [];
         }
         this.emit('auth');
@@ -80,32 +89,73 @@ export const store = {
     };
   },
 
-  _detach() { this._unsubs.forEach(f => { try { f(); } catch (e) {} }); this._unsubs = []; },
+  _detach() { this._detachData(); this._unsubs.forEach(f => { try { f(); } catch (e) {} }); this._unsubs = []; },
+  _detachData() {
+    this._dataUnsubs.forEach(f => { try { f(); } catch (e) {} }); this._dataUnsubs = []; this._dataOn = false;
+    this.profile = null; this.meals = []; this.days = {}; this.weights = [];
+  },
 
+  // Avval ruxsat (access) tekshiriladi, faqat ruxsat bo‘lsa ma’lumotlarga ulanadi
   _attachCloud(uid) {
     const { db, F } = this.fb;
+    this.access = null; this.accessLoaded = false; this.profileLoaded = false;
+    if (this.isAdmin) {
+      this.access = { status: 'approved' }; this.accessLoaded = true;
+      this._attachData(uid); this._attachAdmin(); return;
+    }
+    let autoTried = false;
+    this._unsubs.push(F.onSnapshot(F.doc(db, 'access', uid), async s => {
+      // Email oldindan ruxsat ro‘yxatida bo‘lsa — zayavkasiz darhol ochiladi
+      if (!s.exists() && !autoTried && this.fb.auth.currentUser && this.fb.auth.currentUser.emailVerified) {
+        autoTried = true;
+        if (await this._tryAutoApprove()) return; // keyingi snapshot "approved" bilan keladi
+      }
+      this.access = s.exists() ? s.data() : null;
+      this.accessLoaded = true;
+      if (this.access && this.access.status === 'approved') { if (!this._dataOn) this._attachData(uid); }
+      else if (this._dataOn) this._detachData();
+      this.emit('access');
+    }, err => { console.error(err); this.accessLoaded = true; this.emit('access'); }));
+  },
+
+  _attachAdmin() {
+    const { db, F } = this.fb;
+    this._unsubs.push(F.onSnapshot(F.collection(db, 'access'), s => {
+      this.requests = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
+      this.emit('requests');
+    }, err => console.error(err)));
+    this._unsubs.push(F.onSnapshot(F.collection(db, 'allowlist'), s => {
+      this.allowlist = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+      this.emit('allowlist');
+    }, err => console.error(err)));
+  },
+
+  _attachData(uid) {
+    const { db, F } = this.fb;
+    this._dataOn = true;
     this.profileLoaded = false;
+    const push = f => this._dataUnsubs.push(f);
     const from = addDays(dayKey(), -WINDOW_DAYS);
     const userRef = F.doc(db, 'users', uid);
-    this._unsubs.push(F.onSnapshot(userRef, s => {
+    push(F.onSnapshot(userRef, s => {
       this.profile = s.exists() ? s.data() : null;
       this.profileLoaded = true;
       this.emit('profile');
     }, err => { console.error(err); this.profileLoaded = true; this.emit('error'); }));
 
     const mq = F.query(F.collection(db, 'users', uid, 'meals'), F.where('date', '>=', from), F.orderBy('date', 'desc'));
-    this._unsubs.push(F.onSnapshot(mq, s => {
+    push(F.onSnapshot(mq, s => {
       this.meals = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.ts - a.ts);
       this.emit('meals');
     }, err => console.error(err)));
 
     const dq = F.query(F.collection(db, 'users', uid, 'days'), F.where('date', '>=', from));
-    this._unsubs.push(F.onSnapshot(dq, s => {
+    push(F.onSnapshot(dq, s => {
       const o = {}; s.docs.forEach(d => { o[d.id] = d.data(); }); this.days = o; this.emit('days');
     }, err => console.error(err)));
 
     const wq = F.query(F.collection(db, 'users', uid, 'weights'), F.orderBy('date', 'asc'));
-    this._unsubs.push(F.onSnapshot(wq, s => {
+    push(F.onSnapshot(wq, s => {
       this.weights = s.docs.map(d => ({ id: d.id, ...d.data() })); this.emit('weights');
     }, err => console.error(err)));
   },
@@ -119,6 +169,7 @@ export const store = {
   _loadLocal() {
     const L = this._local;
     this.user = L.user; this.profile = L.profile || null; this.profileLoaded = true;
+    this.access = { status: 'approved' }; this.accessLoaded = true;
     this.meals = (L.meals || []).slice().sort((a, b) => b.ts - a.ts);
     this.days = L.days || {}; this.weights = (L.weights || []).slice().sort((a, b) => a.date < b.date ? -1 : 1);
   },
@@ -207,7 +258,63 @@ export const store = {
       if (n) await batch.commit();
     }
     await F.deleteDoc(F.doc(db, 'users', u.uid));
+    try { await F.deleteDoc(F.doc(db, 'access', u.uid)); } catch (e) {}
     await A.deleteUser(u);
+  },
+
+  // ───────────── Ruxsat (zayavka) ─────────────
+  async requestAccess(name, note) {
+    const { db, F, auth } = this.fb;
+    const u = auth.currentUser;
+    const ref = F.doc(db, 'access', u.uid);
+    const now = Date.now();
+    note = String(note || '').trim().slice(0, 200);
+    if (this.access && this.access.status === 'rejected') {
+      await F.updateDoc(ref, { status: 'pending', note, requestedAt: now }); return 'pending';
+    }
+    const base = {
+      uid: u.uid, email: (u.email || '').toLowerCase(), name: String(name || u.displayName || '').trim().slice(0, 60),
+      photo: u.photoURL || '', note, requestedAt: now,
+    };
+    // Email oldindan ruxsat ro‘yxatida bo‘lsa — darhol ochiladi (Firestore qoidasi tekshiradi)
+    if (u.emailVerified) {
+      try { await F.setDoc(ref, { ...base, status: 'approved', auto: true }); return 'approved'; }
+      catch (e) { /* ro‘yxatda yo‘q — oddiy zayavka */ }
+    }
+    await F.setDoc(ref, { ...base, status: 'pending' });
+    return 'pending';
+  },
+  async _tryAutoApprove() {
+    const { db, F, auth } = this.fb;
+    const u = auth.currentUser;
+    try {
+      await F.setDoc(F.doc(db, 'access', u.uid), {
+        uid: u.uid, email: (u.email || '').toLowerCase(), name: String(u.displayName || '').slice(0, 60),
+        photo: u.photoURL || '', note: '', requestedAt: Date.now(), status: 'approved', auto: true,
+      });
+      return true;
+    } catch (e) { return false; }
+  },
+  // admin
+  async setAccess(uid, status) {
+    const { db, F } = this.fb;
+    await F.updateDoc(F.doc(db, 'access', uid), { status, decidedAt: Date.now() });
+  },
+  async removeAccess(uid) {
+    const { db, F } = this.fb;
+    await F.deleteDoc(F.doc(db, 'access', uid));
+  },
+  async addAllow(email) {
+    const { db, F } = this.fb;
+    email = email.trim().toLowerCase();
+    await F.setDoc(F.doc(db, 'allowlist', email), { email, addedAt: Date.now() });
+    // shu email bilan kutayotgan zayavka bo‘lsa — qabul qilinadi
+    const waiting = this.requests.filter(r => r.email === email && r.status !== 'approved');
+    for (const r of waiting) await this.setAccess(r.id, 'approved');
+  },
+  async removeAllow(email) {
+    const { db, F } = this.fb;
+    await F.deleteDoc(F.doc(db, 'allowlist', email));
   },
 
   // ───────────── Profil ─────────────

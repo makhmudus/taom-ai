@@ -25,6 +25,10 @@ export const firebaseConfig = {
 
 export const FIREBASE_VERSION = '12.19.0';
 
+// Admin(lar): zayavkalarni ko‘radi va ruxsat beradi.
+// Diqqat: shu emailni firestore.rules faylidagi isAdmin() ichida ham yozing.
+export const ADMIN_EMAILS = ['mahmudkilbot@gmail.com'];
+
 // Gemini modellari — birinchisi ishlamasa (limit, mavjud emas),
 // avtomatik keyingisiga o‘tadi. Hammasi bepul tarifda mavjud.
 export const MODELS = [

@@ -75,6 +75,12 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.inst
 function stageOf() {
   if (!store.ready) return 'splash';
   if (!store.user) return 'auth';
+  if (store.mode === 'cloud' && store.user.provider === 'password' && !store.user.verified) return 'verify';
+  if (store.mode === 'cloud' && !store.isAdmin) {
+    if (!store.accessLoaded) return 'splash';
+    const st = store.access ? store.access.status : 'none';
+    if (st !== 'approved') return 'gate:' + st;
+  }
   if (!store.profileLoaded) return 'splash';
   if (!store.profile || !store.profile.done) return 'onboard';
   return 'main';
@@ -84,10 +90,25 @@ function route(force) {
   if (st !== S.stage || force) {
     S.stage = st; closeAllSheets();
     $app.replaceChildren(
-      st === 'splash' ? Splash() : st === 'auth' ? Auth() : st === 'onboard' ? Onboard() : Main()
+      st === 'splash' ? Splash() : st === 'auth' ? Auth() : st === 'verify' ? Verify() : st.startsWith('gate:') ? Gate(st.slice(5)) : st === 'onboard' ? Onboard() : Main()
     );
     window.scrollTo(0, 0);
   } else if (st === 'main') renderView();
+}
+
+// ═════════════ Emailni tasdiqlash (parol bilan kirganlar) ═════════════
+function Verify() {
+  const u = store.user;
+  const check = h('button', { class: 'btn' }, 'Tasdiqladim');
+  check.onclick = async () => { check.disabled = true; await store.reloadUser().catch(() => {}); if (!store.user.verified) { toast('Hali tasdiqlanmagan. Pochtangizni tekshiring'); check.disabled = false; } };
+  const resend = h('button', { class: 'btn ghost' }, 'Xatni qayta yuborish');
+  resend.onclick = async () => { try { await store.resendVerification(); toast('Xat qayta yuborildi'); } catch (e) { toast(authErr(e)); } };
+  return h('div', { class: 'auth' },
+    h('div', { class: 'auth-hero gate-hero' }, h('div', { class: 'gate-icon', html: I.mail }), h('h1', null, 'Emailni tasdiqlang'),
+      h('p', null, `${u.email} manziliga xat yubordik. Undagi havolani bosing, so‘ng shu yerga qayting.`)),
+    h('div', { class: 'auth-body' }, check, resend,
+      h('p', { style: { color: 'var(--muted)', fontSize: '14px', textAlign: 'center', margin: '4px 0 0' } }, 'Xat kelmasa, “Spam” papkasini ham tekshiring.'),
+      h('button', { class: 'link', style: { alignSelf: 'center' }, onclick: () => store.signOut() }, 'Chiqish')));
 }
 
 // ═════════════ Splash ═════════════
@@ -181,6 +202,137 @@ function Auth() {
     h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center' } }, toggle, forgot),
     h('div', { class: 'auth-foot' }, h('span', { class: 'ico16', html: I.shield }),
       'Parollar Google Firebase’da shifrlangan holda saqlanadi.')));
+}
+
+// ═════════════ Zayavka ekranlari ═════════════
+function Gate(kind) {
+  const u = store.user;
+  const who = h('div', { class: 'gate-who' },
+    h('div', { class: 'avatar' }, u.photo ? h('img', { src: u.photo, alt: '', referrerpolicy: 'no-referrer' }) : (u.name || u.email || '?').charAt(0).toUpperCase()),
+    h('div', { style: { minWidth: 0, flex: 1 } }, h('b', null, u.name || 'Foydalanuvchi'), h('span', null, u.email)),
+    h('button', { class: 'link', onclick: () => store.signOut() }, 'Chiqish'));
+  const hero = (title, text, icon) => h('div', { class: 'auth-hero gate-hero' },
+    h('div', { class: 'gate-icon', html: I[icon] }), h('h1', null, title), h('p', null, text));
+
+  if (kind === 'none') {
+    const name = h('input', { class: 'input', value: u.name || '', placeholder: 'Ismingiz', maxlength: 60, autocomplete: 'name' });
+    const note = h('textarea', { class: 'input', placeholder: 'Masalan: Makhmudning onasiman', maxlength: 200, style: { minHeight: '84px' } });
+    const err = h('div', { class: 'err', role: 'alert' });
+    const btn = h('button', { class: 'btn' }, h('span', { html: I.send, style: { display: 'contents' } }), 'Zayavka yuborish');
+    btn.onclick = async () => {
+      err.textContent = '';
+      if (!name.value.trim()) { err.textContent = 'Ismingizni yozing.'; return; }
+      btn.disabled = true;
+      try { const r = await store.requestAccess(name.value, note.value); if (r === 'approved') toast('Xush kelibsiz! Ruxsat berildi'); }
+      catch (e) { console.error(e); err.textContent = 'Zayavka yuborilmadi. Internetni tekshirib, qayta urinib ko‘ring.'; btn.disabled = false; }
+    };
+    return h('div', { class: 'auth' },
+      hero('Ruxsat so‘rang', 'Taom AI hozircha faqat taklif qilingan foydalanuvchilar uchun. Zayavka yuboring — admin ko‘rib chiqadi.', 'lock'),
+      h('div', { class: 'auth-body' }, who,
+        h('label', { class: 'field' }, h('span', null, 'Ism'), name),
+        h('label', { class: 'field' }, h('span', null, 'O‘zingiz haqingizda (ixtiyoriy)'), note),
+        err, btn));
+  }
+  if (kind === 'pending') {
+    const t = store.access && store.access.requestedAt ? new Date(store.access.requestedAt) : null;
+    return h('div', { class: 'auth' },
+      hero('Zayavkangiz qabul qilindi', '1 daqiqadan 2 kungacha ko‘rib chiqiladi.', 'clock'),
+      h('div', { class: 'auth-body' }, who,
+        h('div', { class: 'card gate-card' },
+          h('div', { class: 'pulse' }), h('b', null, 'Ko‘rib chiqilmoqda'),
+          h('p', null, 'Ruxsat berilishi bilan ilova shu yerda o‘zi ochiladi. Ilovani yopib, keyinroq kirsangiz ham bo‘ladi.'),
+          t ? h('span', null, `Yuborildi: ${t.getDate()} ${MONTHS[t.getMonth()]}, ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`) : null)));
+  }
+  if (kind === 'rejected') {
+    const btn = h('button', { class: 'btn' }, 'Qayta so‘rash');
+    btn.onclick = async () => { btn.disabled = true; try { await store.requestAccess(u.name, ''); } catch (e) { toast('Yuborilmadi'); btn.disabled = false; } };
+    return h('div', { class: 'auth' }, hero('Zayavka rad etildi', 'Admin hozircha ruxsat bermadi. Xohlasangiz, qayta so‘rashingiz mumkin.', 'x'),
+      h('div', { class: 'auth-body' }, who, btn));
+  }
+  return h('div', { class: 'auth' }, hero('Hisob to‘xtatilgan', 'Bu hisobga ilovadan foydalanish yopilgan. Savol bo‘lsa, admin bilan bog‘laning.', 'lock'),
+    h('div', { class: 'auth-body' }, who));
+}
+
+// ═════════════ Admin panel ═════════════
+function ago(ts) {
+  if (!ts) return '';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'hozirgina';
+  if (m < 60) return `${m} daqiqa oldin`;
+  const hh = Math.round(m / 60); if (hh < 24) return `${hh} soat oldin`;
+  const d = Math.round(hh / 24); return d < 30 ? `${d} kun oldin` : new Date(ts).toLocaleDateString('ru-RU');
+}
+const STATUS_LBL = { pending: 'Kutilmoqda', approved: 'Ruxsat berilgan', rejected: 'Rad etilgan', blocked: 'Bloklangan' };
+
+function Admin() {
+  const R = store.requests;
+  const groups = {
+    pending: R.filter(r => r.status === 'pending'),
+    approved: R.filter(r => r.status === 'approved'),
+    other: R.filter(r => r.status === 'rejected' || r.status === 'blocked'),
+  };
+  if (!S.adminTab) S.adminTab = groups.pending.length ? 'pending' : 'approved';
+  const act = (uid, status, msg) => store.setAccess(uid, status).then(() => toast(msg)).catch(e => toast(e.message));
+
+  const card = r => {
+    let actions;
+    if (r.status === 'pending') actions = [
+      h('button', { class: 'btn ghost', onclick: () => act(r.id, 'rejected', 'Rad etildi') }, 'Rad etish'),
+      h('button', { class: 'btn', onclick: () => act(r.id, 'approved', 'Ruxsat berildi') }, h('span', { html: I.check, style: { display: 'contents' } }), 'Qabul qilish')];
+    else if (r.status === 'approved') actions = [
+      h('button', { class: 'btn ghost danger-text', onclick: async () => {
+        if (await confirmSheet({ title: `${r.name || r.email} bloklansinmi?`, text: 'U ilovadan foydalana olmaydi. Ma’lumotlari o‘chmaydi, keyin qayta ochish mumkin.', ok: 'Bloklash', danger: true })) act(r.id, 'blocked', 'Bloklandi');
+      } }, 'Bloklash')];
+    else actions = [
+      h('button', { class: 'btn ghost', onclick: async () => {
+        if (await confirmSheet({ title: 'Zayavka o‘chirilsinmi?', text: 'Foydalanuvchi keyin yangidan zayavka yubora oladi.', ok: 'O‘chirish', danger: true })) store.removeAccess(r.id).catch(e => toast(e.message));
+      } }, 'O‘chirish'),
+      h('button', { class: 'btn', onclick: () => act(r.id, 'approved', 'Ruxsat berildi') }, 'Ruxsat berish')];
+    return h('div', { class: 'card req' },
+      h('div', { class: 'req-top' },
+        h('div', { class: 'avatar' }, r.photo ? h('img', { src: r.photo, alt: '', referrerpolicy: 'no-referrer' }) : (r.name || r.email || '?').charAt(0).toUpperCase()),
+        h('div', { class: 'req-who' }, h('b', null, r.name || 'Ismsiz'), h('span', null, r.email)),
+        h('span', { class: 'req-time' }, ago(r.decidedAt && r.status !== 'pending' ? r.decidedAt : r.requestedAt))),
+      r.note ? h('div', { class: 'req-note' }, r.note) : null,
+      r.auto ? h('div', { class: 'req-tag' }, 'Email ro‘yxati orqali avtomatik') : null,
+      r.status === 'rejected' || r.status === 'blocked' ? h('div', { class: 'req-tag' }, STATUS_LBL[r.status]) : null,
+      h('div', { class: 'btn-row', style: { marginTop: '12px' } }, actions));
+  };
+
+  const list = groups[S.adminTab] || [];
+  const emptyTxt = { pending: 'Yangi zayavka yo‘q.', approved: 'Hali hech kimga ruxsat berilmagan.', other: 'Rad etilgan yoki bloklangan foydalanuvchi yo‘q.' }[S.adminTab];
+
+  const em = h('input', { class: 'input', type: 'email', placeholder: 'email@gmail.com', inputmode: 'email', autocomplete: 'off' });
+  const addBtn = h('button', { class: 'round-btn', 'aria-label': 'Emailni qo‘shish', html: I.plus });
+  addBtn.onclick = async () => {
+    const v = em.value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return toast('Email manzilini to‘g‘ri yozing');
+    addBtn.disabled = true;
+    try { await store.addAllow(v); toast('Qo‘shildi'); } catch (e) { toast(e.message); addBtn.disabled = false; }
+  };
+  em.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+
+  return h('div', null,
+    h('div', { class: 'page-head admin-head' },
+      h('button', { class: 'round-btn', 'aria-label': 'Orqaga', html: I.back, onclick: () => { S.view = 'settings'; renderView(); window.scrollTo(0, 0); } }),
+      h('div', null, h('h1', null, 'Admin panel'), h('p', null, 'Kim ilovadan foydalana oladi'))),
+    h('div', { class: 'content', style: { paddingTop: '8px' } },
+      h('div', { class: 'kpis' },
+        h('div', { class: 'kpi' }, h('b', { style: { color: groups.pending.length ? 'var(--saffron)' : null } }, String(groups.pending.length)), h('span', null, 'yangi zayavka')),
+        h('div', { class: 'kpi' }, h('b', null, String(groups.approved.length)), h('span', null, 'foydalanuvchi'))),
+      h('div', { class: 'seg', style: { margin: '14px 0' } },
+        [['pending', `Kutilmoqda ${groups.pending.length}`], ['approved', `Ruxsat ${groups.approved.length}`], ['other', `Rad/blok ${groups.other.length}`]]
+          .map(([k, l]) => h('button', { class: S.adminTab === k ? 'on' : '', onclick: () => { S.adminTab = k; renderView(); } }, l))),
+      list.length ? h('div', { class: 'meals' }, list.map(card)) : h('div', { class: 'card empty' }, h('p', null, emptyTxt)),
+      h('div', { class: 'section-title' }, h('h2', null, 'Oldindan ruxsat')),
+      h('div', { class: 'card' },
+        h('p', { style: { margin: '0 0 12px', color: 'var(--muted)', fontSize: '14.5px' } }, 'Bu emaillar Google bilan kirishi bilan zayavkasiz ochiladi (masalan, oila a’zolari).'),
+        h('div', { class: 'fix', style: { marginTop: 0 } }, em, addBtn),
+        store.allowlist.length ? h('div', { style: { marginTop: '8px' } }, store.allowlist.map(a => h('div', { class: 'item', style: { alignItems: 'center' } },
+          h('b', { style: { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' } }, a.email),
+          h('button', { class: 'round-btn', 'aria-label': 'Ro‘yxatdan olib tashlash', html: I.trash, onclick: async () => {
+            if (await confirmSheet({ title: 'Ro‘yxatdan olib tashlansinmi?', text: `${a.email} uchun avtomatik ruxsat bekor qilinadi. Allaqachon kirgan bo‘lsa, ruxsati saqlanadi.`, ok: 'Olib tashlash', danger: true })) store.removeAllow(a.id).catch(e => toast(e.message));
+          } })))) : null)));
 }
 
 // ═════════════ Onboarding ═════════════
@@ -313,9 +465,12 @@ function syncFab() {
 
 function renderView() {
   if (!$view) return;
-  $nav.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
+  $nav.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.view || (S.view === 'admin' && b.dataset.v === 'settings')));
+  const pend = store.isAdmin ? store.requests.filter(r => r.status === 'pending').length : 0;
+  $nav.querySelector('.nav-btn[data-v=settings]').classList.toggle('has-badge', pend > 0);
+  if (S.view === 'admin' && !store.isAdmin) S.view = 'settings';
   const y = window.scrollY;
-  const v = S.view === 'home' ? Home() : S.view === 'stats' ? Stats() : S.view === 'weight' ? Weight() : Settings();
+  const v = S.view === 'home' ? Home() : S.view === 'stats' ? Stats() : S.view === 'weight' ? Weight() : S.view === 'admin' ? Admin() : Settings();
   $view.replaceChildren(v);
   window.scrollTo(0, y);
 }
@@ -855,6 +1010,12 @@ function Settings() {
       h('div', { class: 'card profile-card' },
         h('div', { class: 'avatar' }, u.photo ? h('img', { src: u.photo, alt: '', referrerpolicy: 'no-referrer' }) : (p.name || '?').charAt(0).toUpperCase()),
         h('div', { style: { minWidth: 0 } }, h('b', null, p.name), h('span', null, providerLbl))),
+      store.isAdmin ? h('div', { class: 'list', style: { marginTop: '12px' } }, (() => {
+        const n = store.requests.filter(r => r.status === 'pending').length;
+        const b = row('shield', 'Admin panel', n ? `${n} ta yangi zayavka` : 'Zayavkalar va ruxsatlar', () => { S.view = 'admin'; renderView(); window.scrollTo(0, 0); });
+        if (n) b.querySelector('.ri').append(h('i', { class: 'dot-badge' }));
+        return b;
+      })()) : null,
       unverified ? h('div', { class: 'notice', style: { marginTop: '12px' } },
         'Email manzilingiz hali tasdiqlanmagan. Pochtangizdagi havolani bosing. ',
         h('button', { class: 'link', onclick: async () => { try { await store.resendVerification(); toast('Xat qayta yuborildi'); } catch (e) { toast(authErr(e)); } } }, 'Qayta yuborish'),

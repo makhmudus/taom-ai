@@ -11,6 +11,11 @@ Ovqatingizni suratga oling, kaloriyasini sun’iy intellekt (Google Gemini) hiso
 - Kunlik me’yor (Mifflin–San Jeor), qolgan kaloriya halqasi va makrolar.
 - Suv hisobi, vazn grafigi, 7/30 kunlik hisobot, eng ko‘p yeyilgan taomlar.
 - Yorug‘ va qorong‘i rejim, internetsiz ochiladi (PWA).
+- **Yopiq kirish:** har kim Google yoki email bilan kira oladi, lekin ilovadan foydalanish uchun zayavka yuboradi. Admin panelda zayavkalarni qabul qiladi, rad etadi yoki bloklaydi. “Oldindan ruxsat” ro‘yxatidagi emaillar zayavkasiz ochiladi.
+
+## Admin
+Admin emaili: `mahmudkilbot@gmail.com` (`js/config.js` → `ADMIN_EMAILS` va `firestore.rules` → `isAdmin()`). Shu email bilan Google orqali kiring → Sozlamalar → **Admin panel**.
+Email/parol bilan kirmoqchi bo‘lsangiz: “Ro‘yxatdan o‘tish” → shu email va o‘z parolingiz → pochtadagi tasdiqlash havolasini bosing.
 
 ## Telefonga o‘rnatish
 Android (Chrome): ⋮ → “Bosh ekranga qo‘shish” → “O‘rnatish”. Yoki ilovada: Sozlamalar → “Telefonga o‘rnatish”.

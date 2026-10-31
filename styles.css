@@ -401,3 +401,37 @@ textarea.input { resize: none; min-height: 96px; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+/* ── Zayavka ekranlari ── */
+.gate-hero { padding-bottom: 40px; }
+.gate-icon { width: 64px; height: 64px; border-radius: 22px; background: rgba(255,255,255,.14); display: grid; place-items: center; margin-bottom: 24px; }
+.gate-icon svg { width: 32px; height: 32px; }
+.gate-hero h1 { font-size: 34px; }
+.gate-who { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.gate-who .avatar { background: var(--surface-2); color: var(--text); flex: none; }
+.gate-who b { display: block; font-size: 15.5px; }
+.gate-who span { display: block; color: var(--muted); font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gate-card { text-align: center; padding: 28px 20px; position: relative; }
+.gate-card b { font-size: 18px; display: block; margin-top: 14px; }
+.gate-card p { color: var(--muted); margin: 6px auto 12px; max-width: 32ch; }
+.gate-card span { font-size: 13.5px; color: var(--faint); font-weight: 600; }
+.pulse { width: 18px; height: 18px; border-radius: 50%; background: var(--saffron); margin: 0 auto; box-shadow: 0 0 0 0 color-mix(in srgb, var(--saffron) 60%, transparent); animation: pulse 1.8s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 16px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ── Admin panel ── */
+.admin-head { display: flex; align-items: center; gap: 12px; }
+.admin-head .round-btn { background: var(--surface); box-shadow: var(--shadow); }
+.req-top { display: flex; align-items: center; gap: 12px; }
+.req-top .avatar { width: 44px; height: 44px; background: var(--surface-2); color: var(--text); flex: none; }
+.req-who { flex: 1; min-width: 0; }
+.req-who b { display: block; font-size: 16px; }
+.req-who span { display: block; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.req-time { font-size: 12.5px; color: var(--faint); font-weight: 600; flex: none; align-self: flex-start; }
+.req-note { margin-top: 12px; padding: 10px 14px; border-radius: 4px 16px 16px 16px; background: var(--surface-2); font-size: 15px; }
+.req-tag { display: inline-block; margin-top: 10px; margin-right: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); background: var(--surface-2); padding: 4px 10px; border-radius: 10px; }
+.req .btn { padding: 13px; font-size: 15px; }
+.btn.danger-text { color: var(--pom); }
+.nav-btn { position: relative; }
+.nav-btn.has-badge::after { content: ''; position: absolute; top: 12px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--pom); box-shadow: 0 0 0 2px var(--surface); }
+.row .ri { position: relative; }
+.dot-badge { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: var(--pom); box-shadow: 0 0 0 2px var(--surface); }
